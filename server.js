@@ -1,5 +1,5 @@
 const express = require('express');
-const Kahoot = require('kahoot.js-updated');
+const Kahoot = require('kahoot.js-latest');
 
 const app = express();
 app.use(express.json());
@@ -22,7 +22,6 @@ app.post('/control', (req, res) => {
       });
 
     activeBot.on("QuestionStart", (question) => {
-      // Pick a random answer choice (0–3)
       const randomChoice = Math.floor(Math.random() * question.quizQuestionAnswers);
       question.answer(randomChoice);
     });
@@ -41,6 +40,5 @@ app.post('/control', (req, res) => {
   res.status(400).json({ error: "Invalid action" });
 });
 
-// Render automatically injects the PORT environment variable
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`Server live on port ${PORT}`));
