@@ -1,12 +1,11 @@
 {
-  "name": "kahoot-blooket-bot-server",
+  "name": "kahoot-bot-server",
   "version": "1.0.0",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"
   },
   "dependencies": {
-    "blooketjs": "^1.1.2",
     "express": "^4.18.2",
     "kahoot.js-latest": "^1.0.9"
   }
