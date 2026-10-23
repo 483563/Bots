@@ -1,6 +1,5 @@
 const express = require('express');
 const Kahoot = require('kahoot.js-latest');
-const { Client: BlooketClient } = require('blooketjs');
 
 const app = express();
 app.use(express.json());
@@ -15,58 +14,54 @@ app.post('/control', (req, res) => {
       return res.json({ status: "Bots are already running!" });
     }
 
+    const selectedPlatform = (platform || "kahoot").toLowerCase();
+
+    // Handle Blooket rejection gracefully
+    if (selectedPlatform === 'blooket') {
+      return res.json({ 
+        status: "Error: Blooket is currently unsupported due to bot protection features." 
+      });
+    }
+
     const count = Math.min(Math.max(parseInt(botCount, 10) || 1, 1), 50);
     const baseName = botName || "Bot";
-    const selectedPlatform = (platform || "kahoot").toLowerCase();
 
     for (let i = 1; i <= count; i++) {
       const currentName = count === 1 ? baseName : `${baseName}_${i}`;
+      const bot = new Kahoot();
 
-      if (selectedPlatform === 'kahoot') {
-        const bot = new Kahoot();
-        bot.join(gamePin, currentName)
-          .then(() => console.log(`[Kahoot] Bot ${currentName} joined game ${gamePin}`))
-          .catch((err) => console.error(`[Kahoot] ${currentName} failed to join:`, err));
+      bot.join(gamePin, currentName)
+        .then(() => console.log(`[Kahoot] Bot ${currentName} joined game ${gamePin}`))
+        .catch((err) => console.error(`[Kahoot] ${currentName} failed to join:`, err));
 
-        bot.on("QuestionStart", (question) => {
-          if (question.choices && Array.isArray(question.choices)) {
-            const correctIndex = question.choices.findIndex(choice => choice.correct === true);
-            if (correctIndex !== -1) {
-              question.answer(correctIndex);
-              return;
-            }
+      bot.on("QuestionStart", (question) => {
+        // Method 1: Check if correct answer choices exist in payload
+        if (question.choices && Array.isArray(question.choices)) {
+          const correctIndex = question.choices.findIndex(choice => choice.correct === true);
+          if (correctIndex !== -1) {
+            question.answer(correctIndex);
+            return;
           }
-          const totalChoices = question.quizQuestionAnswers || 4;
-          question.answer(Math.floor(Math.random() * totalChoices));
-        });
-
-        activeBots.push({ client: bot, platform: 'kahoot' });
-
-      } else if (selectedPlatform === 'blooket') {
-        try {
-          const bot = new BlooketClient();
-          bot.join(gamePin, currentName)
-            .then(() => console.log(`[Blooket] Bot ${currentName} joined game ${gamePin}`))
-            .catch((err) => console.error(`[Blooket] ${currentName} failed to join:`, err));
-
-          activeBots.push({ client: bot, platform: 'blooket' });
-        } catch (err) {
-          console.error(`[Blooket] Error initializing bot ${currentName}:`, err);
         }
-      }
+        // Fallback: Random choice
+        const totalChoices = question.quizQuestionAnswers || 4;
+        question.answer(Math.floor(Math.random() * totalChoices));
+      });
+
+      activeBots.push(bot);
     }
 
-    return res.json({ status: `Launched ${count} ${selectedPlatform} bot(s) for PIN: ${gamePin}` });
+    return res.json({ status: `Launched ${count} Kahoot bot(s) for PIN: ${gamePin}` });
 
   } else if (action === 'stop') {
     if (activeBots.length > 0) {
-      activeBots.forEach(item => {
+      activeBots.forEach(bot => {
         try {
-          if (item.client && typeof item.client.leave === 'function') {
-            item.client.leave();
+          if (typeof bot.leave === 'function') {
+            bot.leave();
           }
         } catch (e) {
-          // Ignore disconnect errors
+          // Ignore individual disconnect errors
         }
       });
 
